@@ -1,0 +1,22 @@
+services:
+  dev:
+    build: .
+    container_name: openledger-dev
+    ports:
+      - "8080:8080"   # VS Code Server
+      - "5432:5432"   # PostgreSQL
+      - "6379:6379"   # Redis
+      - "8000:8000"   # FastAPI
+    volumes:
+      - ./workspace:/workspace
+      - ./data/postgres:/var/lib/postgresql/17/main
+      - ./data/redis:/var/lib/redis
+    environment:
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=openledger
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/openledger
+      - REDIS_URL=redis://localhost:6379
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
