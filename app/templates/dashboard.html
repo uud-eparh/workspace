@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Дашборд - OpenLedger</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🏗️ OpenLedger</h1>
+            <div class="user-info">
+                <span>👤 {{ user.username }}</span>
+                <span class="role">{{ user.role.value }}</span>
+                <a href="/logout" class="logout">🚪 Выйти</a>
+            </div>
+        </header>
+
+        <main>
+            <div class="status-grid">
+                <div class="status-card">
+                    <h2>📊 Статус системы</h2>
+                    <div class="status-item">
+                        <span class="label">PostgreSQL:</span>
+                        <span class="value ok">✅ Подключено</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="label">Redis:</span>
+                        <span class="value ok">✅ Подключено</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="label">Версия:</span>
+                        <span class="value">{{ version }}</span>
+                    </div>
+                </div>
+
+                {% if user.role.value == "master_admin" %}
+                <div class="info-card">
+                    <h2>👑 Мастер-администратор</h2>
+                    <ul>
+                        <li><a href="/admin/users">Управление пользователями</a></li>
+                        <li><a href="/admin/tenants">Управление слоями</a></li>
+                        <li><a href="/admin/roles">Управление ролями</a></li>
+                    </ul>
+                </div>
+                {% elif user.role.value == "master_user" %}
+                <div class="info-card">
+                    <h2>🔧 Мастер-пользователь</h2>
+                    <ul>
+                        <li><a href="/tenants/manage">Управление слоями</a></li>
+                        <li><a href="/users/manage">Управление пользователями</a></li>
+                    </ul>
+                </div>
+                {% else %}
+                <div class="info-card">
+                    <h2>📄 Пользователь</h2>
+                    <ul>
+                        <li><a href="/documents">Документы</a></li>
+                        <li><a href="/products">Товары</a></li>
+                        <li><a href="/counterparties">Контрагенты</a></li>
+                    </ul>
+                </div>
+                {% endif %}
+
+                <div class="info-card">
+                    <h2>ℹ️ Информация</h2>
+                    <ul>
+                        <li><strong>Имя:</strong> {{ user.username }}</li>
+                        <li><strong>Email:</strong> {{ user.email }}</li>
+                        <li><strong>Роль:</strong> {{ user.role.value }}</li>
+                    </ul>
+                </div>
+            </div>
+
+            {% if show_change_password %}
+            <div class="alert alert-warning">
+                ⚠️ <strong>Внимание!</strong> Вы используете стандартный пароль.
+                <a href="/change-password" class="btn btn-warning">Сменить пароль</a>
+            </div>
+            {% endif %}
+        </main>
+    </div>
+</body>
+</html>

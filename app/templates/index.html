@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ project_name }}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🏗️ {{ project_name }}</h1>
+            <p class="version">Версия {{ version }}</p>
+        </header>
+
+        <main>
+            <div class="status-grid">
+                <div class="status-card">
+                    <h2>📊 Статус системы</h2>
+                    <div class="status-item">
+                        <span class="label">PostgreSQL:</span>
+                        <span class="value {{ 'ok' if 'Подключено' in db_status else 'error' }}">
+                            {{ db_status }}
+                        </span>
+                        {% if db_version != 'N/A' %}
+                        <span class="detail">{{ db_version.split(',')[0] }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="status-item">
+                        <span class="label">Redis:</span>
+                        <span class="value {{ 'ok' if 'Подключено' in redis_status else 'error' }}">
+                            {{ redis_status }}
+                        </span>
+                    </div>
+                </div>
+
+                <div class="info-card">
+                    <h2>ℹ️ Информация</h2>
+                    <ul>
+                        <li><strong>Режим:</strong> Разработка</li>
+                        <li><strong>Документация API:</strong> <a href="/docs">/docs</a></li>
+                        <li><strong>Проверка здоровья:</strong> <a href="/health">/health</a></li>
+                    </ul>
+                </div>
+
+                <div class="auth-card">
+                    <h2>🔐 Аутентификация</h2>
+                    <p>Для входа используйте мастер-администратора:</p>
+                    <div class="credentials">
+                        <code>Логин: admin</code>
+                        <code>Пароль: admin123</code>
+                    </div>
+                    <div class="warning">
+                        ⚠️ <strong>Важно!</strong> Смените пароль при первом входе!
+                    </div>
+                    <a href="/login" class="button">Войти в систему</a>
+                </div>
+            </div>
+
+            <div class="actions">
+                <h2>🚀 Быстрые действия</h2>
+                <div class="action-buttons">
+                    <a href="/login" class="action-btn">👤 Войти</a>
+                    <a href="/docs" class="action-btn">📖 API Документация</a>
+                    <a href="/health" class="action-btn">💚 Проверка здоровья</a>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <p>&copy; 2026 {{ project_name }}. MIT License.</p>
+        </footer>
+    </div>
+</body>
+</html>

@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if is_edit %}Редактирование{% else %}Создание{% endif %} пользователя - OpenLedger</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>{% if is_edit %}✏️ Редактирование пользователя{% else %}➕ Создание пользователя{% endif %}</h1>
+            <div class="user-info">
+                <span>👤 {{ user.username }}</span>
+                <span class="role">{{ user.role.value }}</span>
+                <a href="/admin/users" class="back-link">← Назад</a>
+                <a href="/logout" class="logout">🚪 Выйти</a>
+            </div>
+        </header>
+
+        <main>
+            {% if error %}
+            <div class="alert alert-error">{{ error }}</div>
+            {% endif %}
+
+            <form method="post" class="form" action="/admin/users/form">
+                <div class="form-group">
+                    <label for="username">Имя пользователя *</label>
+                    <input type="text" id="username" name="username" 
+                           value="{{ target_user.username if target_user else '' }}"
+                           required minlength="3" maxlength="100">
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email" 
+                           value="{{ target_user.email if target_user else '' }}">
+                </div>
+
+                {% if not is_edit %}
+                <div class="form-group">
+                    <label for="password">Пароль *</label>
+                    <input type="password" id="password" name="password" required minlength="8">
+                    <small>Минимум 8 символов</small>
+                </div>
+                {% else %}
+                <div class="form-group">
+                    <label for="password">Новый пароль (оставьте пустым, если не менять)</label>
+                    <input type="password" id="password" name="password" minlength="8">
+                    <small>Минимум 8 символов</small>
+                </div>
+                {% endif %}
+
+                <div class="form-group">
+                    <label for="role">Роль</label>
+                    <select id="role" name="role">
+                        <option value="MASTER_ADMIN" {% if target_user and target_user.role.value == 'MASTER_ADMIN' %}selected{% endif %}>
+                            Мастер-администратор
+                        </option>
+                        <option value="MASTER_USER" {% if target_user and target_user.role.value == 'MASTER_USER' %}selected{% endif %}>
+                            Мастер-пользователь
+                        </option>
+                        <option value="USER" {% if not target_user or target_user.role.value == 'USER' %}selected{% endif %}>
+                            Пользователь
+                        </option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" name="is_active" value="true" 
+                               {% if not target_user or target_user.is_active %}checked{% endif %}>
+                        Активен
+                    </label>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">
+                        {% if is_edit %}Сохранить{% else %}Создать{% endif %}
+                    </button>
+                    <a href="/admin/users" class="btn btn-secondary">Отмена</a>
+                </div>
+            </form>
+        </main>
+    </div>
+</body>
+</html>

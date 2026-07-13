@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вход - OpenLedger</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container login-container">
+        <div class="login-box">
+            <div class="login-header">
+                <h1>🏗️ OpenLedger</h1>
+                <p class="subtitle">Вход в систему</p>
+            </div>
+
+            {% if error %}
+            <div class="alert alert-error">
+                {{ error }}
+            </div>
+            {% endif %}
+
+            {% if message %}
+            <div class="alert alert-success">
+                {{ message }}
+            </div>
+            {% endif %}
+
+            <form action="/login" method="post" class="login-form">
+                <div class="form-group">
+                    <label for="username">Логин</label>
+                    <input type="text" id="username" name="username" 
+                           placeholder="Введите логин" required autofocus>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Пароль</label>
+                    <input type="password" id="password" name="password" 
+                           placeholder="Введите пароль" required>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Войти</button>
+            </form>
+
+            <div class="login-footer">
+                <p>Версия 0.1.0</p>
+                <p class="hint">Мастер-администратор: admin / admin123</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

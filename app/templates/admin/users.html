@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Пользователи - OpenLedger</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>👥 Управление пользователями</h1>
+            <div class="user-info">
+                <span>👤 {{ user.username }}</span>
+                <span class="role">{{ user.role.value }}</span>
+                <a href="/dashboard" class="back-link">← Назад</a>
+                <a href="/logout" class="logout">🚪 Выйти</a>
+            </div>
+        </header>
+
+        <main>
+            <div class="toolbar">
+                <form method="get" class="search-form">
+                    <input type="text" name="search" placeholder="Поиск..." value="{{ search or '' }}">
+                    <button type="submit">🔍 Найти</button>
+                    <a href="/admin/users/new" class="btn btn-primary">➕ Создать</a>
+                </form>
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Имя пользователя</th>
+                            <th>Email</th>
+                            <th>Роль</th>
+                            <th>Статус</th>
+                            <th>Создан</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for u in users %}
+                        <tr>
+                            <td>{{ u.id }}</td>
+                            <td>{{ u.username }}</td>
+                            <td>{{ u.email or '-' }}</td>
+                            <td><span class="role-badge {{ u.role.value }}">{{ u.role.value }}</span></td>
+                            <td>
+                                {% if u.is_active %}
+                                <span class="status active">✅ Активен</span>
+                                {% else %}
+                                <span class="status inactive">❌ Неактивен</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ u.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
+                            <td>
+                                <a href="/admin/users/{{ u.id }}/edit" class="btn-edit">✏️</a>
+                                {% if u.id != user.id %}
+                                <button onclick="deleteUser({{ u.id }})" class="btn-delete">🗑️</button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% if pages > 1 %}
+            <div class="pagination">
+                {% for p in range(1, pages + 1) %}
+                <a href="?page={{ p }}&search={{ search or '' }}" class="{% if p == page %}active{% endif %}">{{ p }}</a>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </main>
+    </div>
+
+    <script>
+        async function deleteUser(userId) {
+            if (!confirm('Вы уверены, что хотите удалить этого пользователя?')) return;
+            
+            try {
+                const response = await fetch(`/admin/users/${userId}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    location.reload();
+                } else {
+                    alert('Ошибка при удалении пользователя');
+                }
+            } catch (error) {
+                alert('Ошибка сети');
+            }
+        }
+    </script>
+</body>
+</html>
