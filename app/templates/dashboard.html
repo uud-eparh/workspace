@@ -1,85 +1,163 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Дашборд - OpenLedger</title>
-    <link rel="stylesheet" href="/static/css/style.css">
-</head>
-<body>
-    <div class="container">
-        <header>
-            <h1>🏗️ OpenLedger</h1>
-            <div class="user-info">
-                <span>👤 {{ user.username }}</span>
-                <span class="role">{{ user.role.value }}</span>
-                <a href="/logout" class="logout">🚪 Выйти</a>
-            </div>
-        </header>
+{% extends "base.html" %}
 
-        <main>
-            <div class="status-grid">
-                <div class="status-card">
-                    <h2>📊 Статус системы</h2>
-                    <div class="status-item">
-                        <span class="label">PostgreSQL:</span>
-                        <span class="value ok">✅ Подключено</span>
-                    </div>
-                    <div class="status-item">
-                        <span class="label">Redis:</span>
-                        <span class="value ok">✅ Подключено</span>
-                    </div>
-                    <div class="status-item">
-                        <span class="label">Версия:</span>
-                        <span class="value">{{ version }}</span>
-                    </div>
-                </div>
+{% block title %}Дашборд - OpenLedger{% endblock %}
 
-                {% if user.role.value == "master_admin" %}
-                <div class="info-card">
-                    <h2>👑 Мастер-администратор</h2>
-                    <ul>
-                        <li><a href="/admin/users">Управление пользователями</a></li>
-                        <li><a href="/admin/tenants">Управление слоями</a></li>
-                        <li><a href="/admin/roles">Управление ролями</a></li>
-                    </ul>
-                </div>
-                {% elif user.role.value == "master_user" %}
-                <div class="info-card">
-                    <h2>🔧 Мастер-пользователь</h2>
-                    <ul>
-                        <li><a href="/tenants/manage">Управление слоями</a></li>
-                        <li><a href="/users/manage">Управление пользователями</a></li>
-                    </ul>
-                </div>
-                {% else %}
-                <div class="info-card">
-                    <h2>📄 Пользователь</h2>
-                    <ul>
-                        <li><a href="/documents">Документы</a></li>
-                        <li><a href="/products">Товары</a></li>
-                        <li><a href="/counterparties">Контрагенты</a></li>
-                    </ul>
-                </div>
-                {% endif %}
+{% block content %}
+<!-- ОТЛАДКА (всегда видна) -->
+<div style="background: #fff3cd; padding: 10px; border-radius: 8px; margin-bottom: 20px; border: 2px solid #ffc107;">
+    <strong>🔍 Отладка:</strong><br>
+    user.role.value = <strong>{{ user.role.value }}</strong><br>
+    tenant_id = <strong>{{ tenant_id }}</strong><br>
+    user.role.value == 'super_admin' = <strong>{{ user.role.value == 'super_admin' }}</strong><br>
+    user.role.value == 'chief' = <strong>{{ user.role.value == 'chief' }}</strong><br>
+    user.role.value == 'user' = <strong>{{ user.role.value == 'user' }}</strong><br>
+    tenant_id is not none = <strong>{{ tenant_id is not none }}</strong>
+</div>
 
-                <div class="info-card">
-                    <h2>ℹ️ Информация</h2>
-                    <ul>
-                        <li><strong>Имя:</strong> {{ user.username }}</li>
-                        <li><strong>Email:</strong> {{ user.email }}</li>
-                        <li><strong>Роль:</strong> {{ user.role.value }}</li>
-                    </ul>
-                </div>
-            </div>
-
-            {% if show_change_password %}
-            <div class="alert alert-warning">
-                ⚠️ <strong>Внимание!</strong> Вы используете стандартный пароль.
-                <a href="/change-password" class="btn btn-warning">Сменить пароль</a>
-            </div>
-            {% endif %}
-        </main>
+<div class="status-grid">
+    <div class="status-card">
+        <h2>📊 Статус системы</h2>
+        <div class="status-item">
+            <span class="label">PostgreSQL:</span>
+            <span class="value ok">✅ Подключено</span>
+        </div>
+        <div class="status-item">
+            <span class="label">Redis:</span>
+            <span class="value ok">✅ Подключено</span>
+        </div>
+        <div class="status-item">
+            <span class="label">Версия:</span>
+            <span class="value">{{ version }}</span>
+        </div>
     </div>
-</body>
-</html>
+
+    <!-- ============================================ -->
+    <!-- БЛОК ДЛЯ СУПЕРАДМИНИСТРАТОРА                -->
+    <!-- ============================================ -->
+    {% if user.role.value == 'super_admin' %}
+    <div class="info-card">
+        <h2>👑 Суперадминистратор</h2>
+        <ul>
+            <li>
+                <a href="/admin/users" class="admin-link">
+                    <span class="icon">👥</span> Управление пользователями
+                </a>
+            </li>
+        </ul>
+    </div>
+    {% endif %}
+
+    <!-- ============================================ -->
+    <!-- БЛОК ДЛЯ РУКОВОДИТЕЛЯ (CHIEF)               -->
+    <!-- ============================================ -->
+    {% if user.role.value == 'chief' %}
+        <!-- Если есть слой → управление компаниями -->
+        {% if tenant_id is not none %}
+        <div class="info-card">
+            <h2>🏢 Управление компаниями</h2>
+            <ul>
+                <li>
+                    <a href="/tenant/manage" class="admin-link">
+                        <span class="icon">🏢</span> Управление компаниями
+                    </a>
+                </li>
+                <li>
+                    <a href="/tenant/create" class="admin-link">
+                        <span class="icon">➕</span> Создать компанию
+                    </a>
+                </li>
+            </ul>
+        </div>
+        <!-- Если нет слоя → список компаний -->
+        {% else %}
+        <div class="info-card">
+            <h2>🏢 Мои компании</h2>
+            <ul>
+                <li>
+                    <a href="/tenant/companies" class="admin-link">
+                        <span class="icon">📋</span> Список компаний
+                    </a>
+                </li>
+                <li>
+                    <a href="/tenant/create" class="admin-link">
+                        <span class="icon">➕</span> Создать компанию
+                    </a>
+                </li>
+            </ul>
+        </div>
+        {% endif %}
+    {% endif %}
+
+    <!-- ============================================ -->
+    <!-- БЛОК ДЛЯ ОБЫЧНЫХ ПОЛЬЗОВАТЕЛЕЙ (USER)        -->
+    <!-- ============================================ -->
+    {% if user.role.value == 'user' %}
+    <div class="info-card">
+        <h2>📄 Пользователь</h2>
+        <ul>
+            <li>
+                <a href="/documents" class="admin-link">
+                    <span class="icon">📄</span> Документы
+                </a>
+            </li>
+            <li>
+                <a href="/products" class="admin-link">
+                    <span class="icon">📦</span> Товары
+                </a>
+            </li>
+        </ul>
+    </div>
+    {% endif %}
+
+    <!-- ============================================ -->
+    <!-- ИНФОРМАЦИЯ О ПОЛЬЗОВАТЕЛЕ                    -->
+    <!-- ============================================ -->
+    <div class="info-card">
+        <h2>ℹ️ Информация</h2>
+        <ul>
+            <li><strong>Имя:</strong> {{ user.full_name or user.username }}</li>
+            <li><strong>Email:</strong> {{ user.email }}</li>
+            <li><strong>Роль:</strong> {{ user.role.value }}</li>
+            {% if tenant_id is not none %}
+            <li><strong>Слой:</strong> {{ tenant_id }}</li>
+            {% endif %}
+        </ul>
+    </div>
+</div>
+
+{% if show_change_password %}
+<div class="alert alert-warning">
+    ⚠️ <strong>Внимание!</strong> Вы используете стандартный пароль.
+    <a href="/change-password" class="btn btn-warning">Сменить пароль</a>
+</div>
+{% endif %}
+
+<style>
+    .admin-link {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 12px;
+        border-radius: 8px;
+        transition: background 0.2s;
+        text-decoration: none;
+        color: #333;
+    }
+    .admin-link:hover {
+        background: #f1f3f5;
+    }
+    .admin-link .icon {
+        font-size: 18px;
+        width: 30px;
+        text-align: center;
+    }
+    .create-company {
+        background: #e8f5e9;
+        border: 2px dashed #4caf50;
+        font-weight: 500;
+    }
+    .create-company:hover {
+        background: #c8e6c9;
+    }
+</style>
+{% endblock %}

@@ -1,17 +1,18 @@
-from fastapi import APIRouter, HTTPException, Request, Form
+from fastapi import APIRouter, Depends, HTTPException, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from app.core.database import AsyncSessionLocal
-from app.core.auth import get_current_user
+from app.core.auth import get_current_user, get_current_tenant
 from app.models import GlobalUser, UserRole
 from app.services.user_service import UserService
 from app.schemas.user import UserCreate, UserUpdate, UserResponse
 from typing import Optional
+import uuid
 import logging
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/admin/users", tags=["Users"])
+router = APIRouter(prefix="/admin/users", tags=["Admin Users"])
 templates = Jinja2Templates(directory="app/templates")
 
 # ===== HTML страницы =====
@@ -23,10 +24,10 @@ async def users_list_page(
     page: int = 1,
     per_page: int = 20,
 ):
-    """Страница списка пользователей"""
+    """Страница списка пользователей (только для SUPER_ADMIN)"""
     async with AsyncSessionLocal() as db:
         user = await get_current_user(request, db)
-        if not user or user.role != UserRole.MASTER_ADMIN:
+        if not user or user.role != UserRole.SUPER_ADMIN:
             return RedirectResponse(url="/login", status_code=302)
         
         service = UserService(db)
@@ -55,7 +56,7 @@ async def user_create_page(
     """Страница создания пользователя"""
     async with AsyncSessionLocal() as db:
         user = await get_current_user(request, db)
-        if not user or user.role != UserRole.MASTER_ADMIN:
+        if not user or user.role != UserRole.SUPER_ADMIN:
             return RedirectResponse(url="/login", status_code=302)
         
         return templates.TemplateResponse(
@@ -71,17 +72,22 @@ async def user_create_page(
 @router.get("/{user_id}/edit", response_class=HTMLResponse)
 async def user_edit_page(
     request: Request,
-    user_id: int,
+    user_id: str,
     error: Optional[str] = None,
 ):
     """Страница редактирования пользователя"""
     async with AsyncSessionLocal() as db:
         current_user = await get_current_user(request, db)
-        if not current_user or current_user.role != UserRole.MASTER_ADMIN:
+        if not current_user or current_user.role != UserRole.SUPER_ADMIN:
             return RedirectResponse(url="/login", status_code=302)
         
         service = UserService(db)
-        target_user = await service.get_user_by_id(user_id)
+        try:
+            user_uuid = uuid.UUID(user_id)
+        except ValueError:
+            return RedirectResponse(url="/admin/users", status_code=302)
+        
+        target_user = await service.get_user_by_id(user_uuid)
         if not target_user:
             return RedirectResponse(url="/admin/users", status_code=302)
         
@@ -96,124 +102,74 @@ async def user_edit_page(
             }
         )
 
-# ===== Эндпоинт для HTML-формы (БЕЗ Depends!) =====
-
-@router.post("/form")
-async def create_user_form(
-    request: Request,
-    username: str = Form(...),
-    email: Optional[str] = Form(None),
-    password: str = Form(...),
-    role: str = Form("USER"),
-    is_active: bool = Form(True),
-):
-    """Создать пользователя из HTML-формы"""
-    async with AsyncSessionLocal() as db:
-        current_user = await get_current_user(request, db)
-        if not current_user or current_user.role != UserRole.MASTER_ADMIN:
-            return RedirectResponse(url="/admin/users", status_code=302)
-        
-        user_data = UserCreate(
-            username=username,
-            email=email,
-            password=password,
-            role=role,
-            is_active=is_active
-        )
-        
-        service = UserService(db)
-        
-        existing = await service.get_user_by_username(username)
-        if existing:
-            return RedirectResponse(
-                url="/admin/users/new?error=Пользователь с таким именем уже существует",
-                status_code=302
-            )
-        
-        try:
-            user = await service.create_user(user_data)
-            return RedirectResponse(url="/admin/users", status_code=302)
-        except Exception as e:
-            logger.error(f"❌ Error creating user: {e}")
-            return RedirectResponse(
-                url=f"/admin/users/new?error=Ошибка при создании пользователя: {str(e)}",
-                status_code=302
-            )
-
 # ===== API эндпоинты =====
 
 @router.post("/", response_model=UserResponse)
-async def create_user_api(
+async def create_user(
     user_data: UserCreate,
     request: Request,
 ):
     """Создать пользователя (API)"""
     async with AsyncSessionLocal() as db:
         current_user = await get_current_user(request, db)
-        if current_user.role != UserRole.MASTER_ADMIN:
+        if not current_user or current_user.role != UserRole.SUPER_ADMIN:
             raise HTTPException(status_code=403, detail="Недостаточно прав")
         
         service = UserService(db)
-        
-        existing = await service.get_user_by_username(user_data.username)
-        if existing:
-            raise HTTPException(status_code=400, detail="Пользователь с таким именем уже существует")
-        
-        user = await service.create_user(user_data)
-        return UserResponse(
-            id=user.id,
-            username=user.username,
-            email=user.email,
-            role=user.role.value,
-            is_active=user.is_active,
-            created_at=user.created_at.isoformat() if user.created_at else None,
-            updated_at=user.updated_at.isoformat() if user.updated_at else None
-        )
+        try:
+            user = await service.create_user(user_data)
+            return UserResponse.model_validate(user)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
 
 @router.put("/{user_id}", response_model=UserResponse)
 async def update_user(
-    user_id: int,
+    user_id: str,
     user_data: UserUpdate,
     request: Request,
 ):
     """Обновить пользователя (API)"""
     async with AsyncSessionLocal() as db:
         current_user = await get_current_user(request, db)
-        if current_user.role != UserRole.MASTER_ADMIN:
+        if not current_user or current_user.role != UserRole.SUPER_ADMIN:
             raise HTTPException(status_code=403, detail="Недостаточно прав")
         
-        service = UserService(db)
-        user = await service.update_user(user_id, user_data)
-        if not user:
-            raise HTTPException(status_code=404, detail="Пользователь не найден")
+        try:
+            user_uuid = uuid.UUID(user_id)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Неверный формат ID")
         
-        return UserResponse(
-            id=user.id,
-            username=user.username,
-            email=user.email,
-            role=user.role.value,
-            is_active=user.is_active,
-            created_at=user.created_at.isoformat() if user.created_at else None,
-            updated_at=user.updated_at.isoformat() if user.updated_at else None
-        )
+        service = UserService(db)
+        try:
+            user = await service.update_user(user_uuid, user_data)
+            if not user:
+                raise HTTPException(status_code=404, detail="Пользователь не найден")
+            return UserResponse.model_validate(user)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
 
-@router.delete("/{user_id}", response_model=None)
+@router.delete("/{user_id}")
 async def delete_user(
-    user_id: int,
+    user_id: str,
     request: Request,
 ):
     """Удалить пользователя (API)"""
     async with AsyncSessionLocal() as db:
         current_user = await get_current_user(request, db)
-        if current_user.role != UserRole.MASTER_ADMIN:
+        if not current_user or current_user.role != UserRole.SUPER_ADMIN:
             raise HTTPException(status_code=403, detail="Недостаточно прав")
         
-        if current_user.id == user_id:
+        try:
+            user_uuid = uuid.UUID(user_id)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Неверный формат ID")
+        
+        if current_user.id == user_uuid:
             raise HTTPException(status_code=400, detail="Нельзя удалить самого себя")
         
         service = UserService(db)
-        success = await service.delete_user(user_id)
-        if not success:
+        user = await service.toggle_user_active(user_uuid)
+        if not user:
             raise HTTPException(status_code=404, detail="Пользователь не найден")
         
-        return {"message": "Пользователь удален"}
+        return {"message": f"Пользователь {'заблокирован' if not user.is_active else 'разблокирован'}"}

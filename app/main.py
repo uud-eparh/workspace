@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, Form
+from fastapi import FastAPI, Request, Form, Depends
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -6,10 +6,16 @@ from contextlib import asynccontextmanager
 from sqlalchemy import text
 from app.core.database import AsyncSessionLocal, engine
 from app.core.config import settings
-from app.core.init_db import init_master_admin
-from app.core.auth import authenticate_user, create_access_token, get_current_user
+from app.core.init_super_admin import init_super_admin
+from app.core.auth import (
+    authenticate_user, create_access_token,
+    get_current_user, get_current_tenant
+)
 from app.core.security import get_password_hash, verify_password
+from app.models import GlobalUser, Membership
 from app.api.v1.endpoints import users
+from app.api.v1.endpoints import tenant
+from sqlalchemy import select
 import logging
 import redis.asyncio as redis
 
@@ -24,8 +30,10 @@ async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         from app.models import Base
         await conn.run_sync(Base.metadata.create_all)
+    
     async with AsyncSessionLocal() as db:
-        await init_master_admin(db)
+        await init_super_admin(db)
+    
     yield
     logger.info("🛑 Shutting down OpenLedger...")
     await engine.dispose()
@@ -40,11 +48,13 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 # Регистрируем роутеры
 app.include_router(users.router)
+app.include_router(tenant.router)
 
 # ===== Routes =====
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
+    """Главная страница"""
     async with AsyncSessionLocal() as db:
         user = await get_current_user(request, db)
     
@@ -82,6 +92,7 @@ async def home(request: Request):
 
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request, error: str = None, message: str = None):
+    """Страница входа"""
     async with AsyncSessionLocal() as db:
         user = await get_current_user(request, db)
     
@@ -99,14 +110,20 @@ async def login(
     username: str = Form(...),
     password: str = Form(...)
 ):
+    """Обработка входа"""
     async with AsyncSessionLocal() as db:
-        user = await authenticate_user(db, username, password)
+        user, tenant_id, error = await authenticate_user(db, username, password)
         
-        if not user:
-            return await login_page(request, error="Неверный логин или пароль")
+        if error or not user:
+            return await login_page(request, error=error or "Неверный логин или пароль")
         
-        access_token = create_access_token(data={"sub": str(user.id)})
-        logger.info(f"🔑 Created token for user {user.id}")
+        access_token = create_access_token(
+            data={
+                "sub": str(user.id),
+                "tenant_id": str(tenant_id)
+            }
+        )
+        logger.info(f"🔑 Created token for user {user.id} (tenant: {tenant_id})")
         
         response = RedirectResponse(url="/dashboard", status_code=302)
         response.set_cookie(
@@ -120,33 +137,49 @@ async def login(
 
 @app.get("/logout")
 async def logout():
+    """Выход из системы"""
     response = RedirectResponse(url="/login", status_code=302)
     response.delete_cookie("access_token", path="/")
     return response
 
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(request: Request):
+    """Дашборд"""
     async with AsyncSessionLocal() as db:
         user = await get_current_user(request, db)
-        logger.info(f"📊 Dashboard user: {user is not None}")
+        tenant_id = await get_current_tenant(request)
+        logger.info(f"📊 Dashboard user: {user is not None}, tenant: {tenant_id}")
     
     if not user:
         return RedirectResponse(url="/login", status_code=302)
     
-    is_default_password = verify_password("admin123", user.password_hash)
+    result = await db.execute(
+        select(Membership).where(
+            Membership.user_id == user.id,
+            Membership.tenant_id == tenant_id
+        )
+    )
+    membership = result.scalar_one_or_none()
+    
+    is_temp_password = False
+    if membership:
+        temp_hash = get_password_hash("admin123")
+        is_temp_password = (membership.layer_access_hash == temp_hash)
     
     return templates.TemplateResponse(
         "dashboard.html",
         {
             "request": request,
             "user": user,
+            "tenant_id": tenant_id,
             "version": settings.VERSION,
-            "show_change_password": is_default_password
+            "show_change_password": is_temp_password
         }
     )
 
 @app.get("/change-password", response_class=HTMLResponse)
 async def change_password_page(request: Request, error: str = None, success: str = None):
+    """Страница смены пароля"""
     async with AsyncSessionLocal() as db:
         user = await get_current_user(request, db)
     
@@ -155,7 +188,13 @@ async def change_password_page(request: Request, error: str = None, success: str
     
     return templates.TemplateResponse(
         "change_password.html",
-        {"request": request, "error": error, "success": success}
+        {
+            "request": request,
+            "user": user,
+            "error": error,
+            "success": success,
+            "version": settings.VERSION,
+        }
     )
 
 @app.post("/change-password")
@@ -165,13 +204,26 @@ async def change_password(
     new_password: str = Form(...),
     confirm_password: str = Form(...)
 ):
+    """Обработка смены пароля"""
     async with AsyncSessionLocal() as db:
         user = await get_current_user(request, db)
+        tenant_id = await get_current_tenant(request)
         
-        if not user:
+        if not user or not tenant_id:
             return RedirectResponse(url="/login", status_code=302)
         
-        if not verify_password(current_password, user.password_hash):
+        result = await db.execute(
+            select(Membership).where(
+                Membership.user_id == user.id,
+                Membership.tenant_id == tenant_id
+            )
+        )
+        membership = result.scalar_one_or_none()
+        
+        if not membership:
+            return RedirectResponse(url="/login", status_code=302)
+        
+        if not verify_password(current_password, membership.layer_access_hash):
             return await change_password_page(
                 request, 
                 error="Неверный текущий пароль"
@@ -189,26 +241,23 @@ async def change_password(
                 error="Пароли не совпадают"
             )
         
-        user.password_hash = get_password_hash(new_password)
+        membership.layer_access_hash = get_password_hash(new_password)
         await db.commit()
         
         return RedirectResponse(url="/dashboard", status_code=302)
 
 @app.get("/health")
 async def health():
+    """Проверка здоровья системы"""
     return {"status": "healthy", "version": settings.VERSION}
 
 @app.get("/api/status")
 async def status():
+    """Детальный статус системы"""
     return {
         "project": settings.PROJECT_NAME,
         "version": settings.VERSION,
         "debug": settings.DEBUG,
     }
-
-@app.post("/test-form")
-async def test_form(
-    username: str = Form(...),
-    password: str = Form(...),
-):
-    return {"username": username, "password": password}
+from app.api.v1.endpoints import tenant
+app.include_router(tenant.router)

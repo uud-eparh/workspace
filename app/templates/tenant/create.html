@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}Создать компанию - OpenLedger{% endblock %}
+
+{% block content %}
+<div class="create-tenant-container">
+    <h2>➕ Создать компанию</h2>
+    <p>Заполните форму для создания новой компании</p>
+
+    {% if error %}
+    <div class="alert alert-error">{{ error }}</div>
+    {% endif %}
+
+    <form action="/tenant/create" method="post" class="form">
+        <div class="form-group">
+            <label for="name">Название компании *</label>
+            <input type="text" id="name" name="name" required minlength="2" maxlength="255">
+        </div>
+
+        <div class="form-group">
+            <label for="description">Описание</label>
+            <textarea id="description" name="description" rows="3"></textarea>
+        </div>
+
+        <div class="form-group">
+            <label for="password">Пароль для доступа к компании *</label>
+            <input type="password" id="password" name="password" required minlength="8">
+            <small>Минимум 8 символов. Этот пароль будет использоваться для входа в компанию.</small>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Создать компанию</button>
+            <a href="/dashboard" class="btn btn-secondary">Отмена</a>
+        </div>
+    </form>
+</div>
+
+<style>
+    .create-tenant-container {
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+    .create-tenant-container h2 {
+        text-align: center;
+        margin-bottom: 10px;
+    }
+    .create-tenant-container p {
+        text-align: center;
+        color: #666;
+        margin-bottom: 30px;
+    }
+    textarea {
+        width: 100%;
+        padding: 12px;
+        border: 2px solid #e9ecef;
+        border-radius: 8px;
+        font-family: inherit;
+        resize: vertical;
+    }
+    textarea:focus {
+        outline: none;
+        border-color: #667eea;
+    }
+    .form-actions {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+        margin-top: 20px;
+    }
+    .form-actions .btn-secondary {
+        background: #6c757d;
+        color: white;
+        padding: 12px 24px;
+        border-radius: 8px;
+        text-decoration: none;
+        border: none;
+        cursor: pointer;
+        display: inline-block;
+    }
+    .form-actions .btn-secondary:hover {
+        background: #5a6268;
+    }
+    .form-group small {
+        display: block;
+        margin-top: 5px;
+        color: #6c757d;
+        font-size: 0.85em;
+    }
+</style>
+{% endblock %}

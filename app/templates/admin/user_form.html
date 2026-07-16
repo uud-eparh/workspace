@@ -1,87 +1,90 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% if is_edit %}Редактирование{% else %}Создание{% endif %} пользователя - OpenLedger</title>
-    <link rel="stylesheet" href="/static/css/style.css">
-</head>
-<body>
-    <div class="container">
-        <header>
-            <h1>{% if is_edit %}✏️ Редактирование пользователя{% else %}➕ Создание пользователя{% endif %}</h1>
-            <div class="user-info">
-                <span>👤 {{ user.username }}</span>
-                <span class="role">{{ user.role.value }}</span>
-                <a href="/admin/users" class="back-link">← Назад</a>
-                <a href="/logout" class="logout">🚪 Выйти</a>
-            </div>
-        </header>
+{% extends "base.html" %}
 
-        <main>
-            {% if error %}
-            <div class="alert alert-error">{{ error }}</div>
-            {% endif %}
+{% block title %}{% if is_edit %}Редактирование{% else %}Создание{% endif %} пользователя - OpenLedger{% endblock %}
 
-            <form method="post" class="form" action="/admin/users/form">
-                <div class="form-group">
-                    <label for="username">Имя пользователя *</label>
-                    <input type="text" id="username" name="username" 
-                           value="{{ target_user.username if target_user else '' }}"
-                           required minlength="3" maxlength="100">
-                </div>
+{% block content %}
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
 
-                <div class="form-group">
-                    <label for="email">Email</label>
-                    <input type="email" id="email" name="email" 
-                           value="{{ target_user.email if target_user else '' }}">
-                </div>
-
-                {% if not is_edit %}
-                <div class="form-group">
-                    <label for="password">Пароль *</label>
-                    <input type="password" id="password" name="password" required minlength="8">
-                    <small>Минимум 8 символов</small>
-                </div>
-                {% else %}
-                <div class="form-group">
-                    <label for="password">Новый пароль (оставьте пустым, если не менять)</label>
-                    <input type="password" id="password" name="password" minlength="8">
-                    <small>Минимум 8 символов</small>
-                </div>
-                {% endif %}
-
-                <div class="form-group">
-                    <label for="role">Роль</label>
-                    <select id="role" name="role">
-                        <option value="MASTER_ADMIN" {% if target_user and target_user.role.value == 'MASTER_ADMIN' %}selected{% endif %}>
-                            Мастер-администратор
-                        </option>
-                        <option value="MASTER_USER" {% if target_user and target_user.role.value == 'MASTER_USER' %}selected{% endif %}>
-                            Мастер-пользователь
-                        </option>
-                        <option value="USER" {% if not target_user or target_user.role.value == 'USER' %}selected{% endif %}>
-                            Пользователь
-                        </option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label>
-                        <input type="checkbox" name="is_active" value="true" 
-                               {% if not target_user or target_user.is_active %}checked{% endif %}>
-                        Активен
-                    </label>
-                </div>
-
-                <div class="form-actions">
-                    <button type="submit" class="btn btn-primary">
-                        {% if is_edit %}Сохранить{% else %}Создать{% endif %}
-                    </button>
-                    <a href="/admin/users" class="btn btn-secondary">Отмена</a>
-                </div>
-            </form>
-        </main>
+<form id="userForm" class="form">
+    <div class="form-group">
+        <label for="username">Логин *</label>
+        <input type="text" id="username" name="username" 
+               value="{{ target_user.username if target_user else '' }}"
+               {% if is_edit %}readonly{% endif %}
+               required minlength="3" maxlength="100">
     </div>
-</body>
-</html>
+
+    <div class="form-group">
+        <label for="full_name">ФИО</label>
+        <input type="text" id="full_name" name="full_name" 
+               value="{{ target_user.full_name if target_user else '' }}"
+               maxlength="255">
+    </div>
+
+    <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" 
+               value="{{ target_user.email if target_user else '' }}">
+    </div>
+
+    <div class="form-group">
+        <label for="department">Отдел</label>
+        <input type="text" id="department" name="department" 
+               value="{{ target_user.department if target_user else '' }}"
+               maxlength="255">
+    </div>
+
+    <div class="form-group">
+        <label for="subdivision">Подразделение</label>
+        <input type="text" id="subdivision" name="subdivision" 
+               value="{{ target_user.subdivision if target_user else '' }}"
+               maxlength="255">
+    </div>
+
+    <div class="form-actions">
+        <button type="submit" class="btn btn-primary">
+            {% if is_edit %}Сохранить{% else %}Создать{% endif %}
+        </button>
+        <a href="/admin/users" class="btn btn-secondary">Отмена</a>
+    </div>
+</form>
+
+<script>
+    document.getElementById('userForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        const data = {};
+        formData.forEach((value, key) => {
+            if (value) data[key] = value;
+        });
+        
+        const isEdit = {{ 'true' if is_edit else 'false' }};
+        const userId = '{{ target_user.id if target_user else '' }}';
+        
+        const url = isEdit ? `/admin/users/${userId}` : '/admin/users';
+        const method = isEdit ? 'PUT' : 'POST';
+        
+        try {
+            const response = await fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            });
+            
+            if (response.ok) {
+                window.location.href = '/admin/users';
+            } else {
+                const error = await response.json();
+                alert('Ошибка: ' + (error.detail || 'Неизвестная ошибка'));
+            }
+        } catch (error) {
+            alert('Ошибка сети');
+        }
+    });
+</script>
+{% endblock %}
