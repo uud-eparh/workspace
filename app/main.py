@@ -14,6 +14,7 @@ from app.core.auth import (
 from app.core.security import get_password_hash, verify_password
 from app.models import GlobalUser, Membership
 from app.api.v1.endpoints import users
+from app.api.v1.endpoints.dictionaries import router as dictionaries_router
 from app.api.v1.endpoints import tenant
 from sqlalchemy import select
 import logging
@@ -48,6 +49,7 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 # Регистрируем роутеры
 app.include_router(users.router)
+app.include_router(dictionaries_router)
 app.include_router(tenant.router)
 
 # ===== Routes =====

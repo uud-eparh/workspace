@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block title %}{% if is_edit %}Редактирование{% else %}Создание{% endif %} {{ dict_type.name }} - OpenLedger{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <h2>{% if is_edit %}✏️ Редактирование{% else %}➕ Создание{% endif %} {{ dict_type.name }}</h2>
+
+    {% if error %}
+    <div class="alert alert-error">{{ error }}</div>
+    {% endif %}
+
+    <form method="post" action="{% if is_edit %}/dictionaries/{{ type_name }}/{{ item.id }}{% else %}/dictionaries/{{ type_name }}{% endif %}" class="form">
+        <div class="form-group">
+            <label for="code">Код *</label>
+            <input type="text" id="code" name="code" 
+                   value="{{ item.code if item else '' }}"
+                   required maxlength="50">
+        </div>
+
+        <div class="form-group">
+            <label for="name">Название *</label>
+            <input type="text" id="name" name="name" 
+                   value="{{ item.name if item else '' }}"
+                   required maxlength="255">
+        </div>
+
+        {% if dict_type.fields|selectattr("name", "equalto", "symbol")|list %}
+        <div class="form-group">
+            <label for="symbol">Символ</label>
+            <input type="text" id="symbol" name="symbol" 
+                   value="{{ item.symbol if item else '' }}"
+                   maxlength="50">
+        </div>
+        {% endif %}
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">
+                {% if is_edit %}Сохранить{% else %}Создать{% endif %}
+            </button>
+            <a href="/dictionaries/{{ type_name }}" class="btn btn-secondary">Отмена</a>
+        </div>
+    </form>
+</div>
+
+<style>
+    .form-container {
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+    .form-container h2 {
+        margin-bottom: 20px;
+    }
+    .form-group {
+        margin-bottom: 20px;
+    }
+    .form-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: 500;
+    }
+    .form-group input {
+        width: 100%;
+        padding: 10px;
+        border: 2px solid #e9ecef;
+        border-radius: 8px;
+        font-size: 16px;
+    }
+    .form-group input:focus {
+        outline: none;
+        border-color: #667eea;
+    }
+    .form-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 20px;
+    }
+    .form-actions .btn {
+        padding: 10px 24px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        text-decoration: none;
+        font-size: 16px;
+    }
+    .form-actions .btn-primary {
+        background: #667eea;
+        color: white;
+    }
+    .form-actions .btn-primary:hover {
+        background: #5a67d8;
+    }
+    .form-actions .btn-secondary {
+        background: #6c757d;
+        color: white;
+    }
+    .form-actions .btn-secondary:hover {
+        background: #5a6268;
+    }
+    .alert-error {
+        background: #f8d7da;
+        border: 1px solid #f5c6cb;
+        color: #721c24;
+        padding: 10px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+</style>
+{% endblock %}

@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}Справочники - OpenLedger{% endblock %}
+
+{% block content %}
+<div class="dictionaries-container">
+    <h2>📚 Справочники</h2>
+    <p>Выберите справочник для просмотра и редактирования</p>
+
+    <div class="dictionaries-grid">
+        <a href="/dictionaries/units" class="dictionary-card">
+            <div class="card-icon">📏</div>
+            <div class="card-title">Единицы измерения</div>
+            <div class="card-desc">Управление единицами измерения (шт, кг, м, л)</div>
+        </a>
+        
+        <a href="/dictionaries/currencies" class="dictionary-card">
+            <div class="card-icon">💱</div>
+            <div class="card-title">Валюты</div>
+            <div class="card-desc">Управление валютами (RUB, USD, EUR)</div>
+        </a>
+        
+        <a href="/dictionaries/countries" class="dictionary-card">
+            <div class="card-icon">🌍</div>
+            <div class="card-title">Страны</div>
+            <div class="card-desc">Управление странами</div>
+        </a>
+        
+        <a href="/dictionaries/regions" class="dictionary-card">
+            <div class="card-icon">🗺️</div>
+            <div class="card-title">Регионы</div>
+            <div class="card-desc">Управление регионами</div>
+        </a>
+        
+        <a href="/dictionaries/cities" class="dictionary-card">
+            <div class="card-icon">🏙️</div>
+            <div class="card-title">Города</div>
+            <div class="card-desc">Управление городами</div>
+        </a>
+    </div>
+</div>
+
+<style>
+    .dictionaries-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+    .dictionaries-container h2 {
+        margin-bottom: 10px;
+    }
+    .dictionaries-container p {
+        color: #666;
+        margin-bottom: 30px;
+    }
+    .dictionaries-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 20px;
+    }
+    .dictionary-card {
+        display: block;
+        background: #f8f9fa;
+        border: 1px solid #e9ecef;
+        border-radius: 12px;
+        padding: 24px;
+        text-decoration: none;
+        color: #333;
+        transition: all 0.2s;
+    }
+    .dictionary-card:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        transform: translateY(-4px);
+        border-color: #667eea;
+    }
+    .card-icon {
+        font-size: 32px;
+        margin-bottom: 12px;
+    }
+    .card-title {
+        font-size: 18px;
+        font-weight: 600;
+        margin-bottom: 8px;
+    }
+    .card-desc {
+        font-size: 14px;
+        color: #666;
+        line-height: 1.4;
+    }
+</style>
+{% endblock %}
